@@ -26,6 +26,35 @@ def _segment_midpoint(seg: Segment) -> float:
     return (seg.start_sec + seg.end_sec) / 2.0
 
 
+def _thumb_timestamp_poc(seg: Segment, offset_sec: float = 1.0, tail_margin_sec: float = 0.2) -> float:
+    """
+    Pick a thumbnail timestamp inside the segment.
+
+    POC rule:
+    - Prefer a timestamp slightly after the segment start (offset_sec),
+      because the midpoint often lands on unrepresentative frames (motion blur / transition / early action).
+    - Clamp to stay within [start, end - tail_margin_sec].
+    - Fallback to midpoint for very short segments.
+    """
+    seg_len = seg.end_sec - seg.start_sec
+    if seg_len <= 0.0:
+        return seg.start_sec
+
+    # Very short segments: midpoint is safer than start+offset.
+    if seg_len < (offset_sec + tail_margin_sec):
+        return _segment_midpoint(seg)
+
+    t = seg.start_sec + offset_sec
+    latest = seg.end_sec - tail_margin_sec
+
+    if t > latest:
+        t = latest
+    if t < seg.start_sec:
+        t = seg.start_sec
+
+    return float(t)
+
+
 def select_top_moments(
     segment_features: List[SegmentFeatures],
     max_moments: int = 8,
@@ -98,7 +127,7 @@ def select_top_moments(
                 start_sec=seg.start_sec,
                 end_sec=seg.end_sec,
                 interest_score=cand.interest_score,
-                thumb_timestamp_sec=mid,
+                thumb_timestamp_sec=_thumb_timestamp_poc(seg),
             )
         )
 
