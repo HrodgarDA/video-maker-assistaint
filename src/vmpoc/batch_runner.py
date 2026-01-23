@@ -28,11 +28,24 @@ class PocSettings:
     frames_per_segment: int = 3
     max_moments_per_video: int = 8
 
+    # Selector parameters (dedup / diversity)
+    iou_threshold: float = 0.30
+    min_gap_sec: float = 1.25
+    min_score: float = 0.10
+    bucket_sec: float = 12.0
+    max_per_bucket: int = 1
+
     # Proxy parameters
     quality_proxy_height: int = 720
     quality_proxy_fps: int = 12
     vlm_proxy_height: int = 480
     vlm_proxy_fps: int = 5
+
+    # Scoring weights (normalized in the UI; here we just store them for reproducibility)
+    preset: str = "Custom"  # e.g. "Drone", "Action", "Custom"
+    quality_weight: float = 0.40
+    composition_weight: float = 0.20
+    action_weight: float = 0.40
 
 
 def _is_video_file(path: Path) -> bool:
@@ -136,12 +149,20 @@ def run_batch_analysis(
             proxy_quality_path=proxy_quality,
             segments=segments,
             frames_per_segment=settings.frames_per_segment,
-        )
+            motion_weight=settings.action_weight,
+            sharpness_weight=settings.quality_weight,
+            composition_weight=settings.composition_weight,
+            )
 
         # --- Moment selection (deduplicate overlapping windows) ---
         selected = select_top_moments(
             segment_features=all_features,
             max_moments=settings.max_moments_per_video,
+            iou_threshold=settings.iou_threshold,
+            min_gap_sec=settings.min_gap_sec,
+            min_score=settings.min_score,
+            bucket_sec=settings.bucket_sec,
+            max_per_bucket=settings.max_per_bucket,
         )
 
         # --- Inspection confidence (derived from our scoring distribution) ---

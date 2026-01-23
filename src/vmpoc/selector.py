@@ -61,6 +61,8 @@ def select_top_moments(
     iou_threshold: float = 0.30,
     min_gap_sec: float = 1.25,
     min_score: float = 0.10,
+    bucket_sec: float = 12.0,
+    max_per_bucket: int = 1,
 ) -> List[SelectedMoment]:
     """
     Select top moments using a greedy ranking + non-max suppression strategy.
@@ -93,6 +95,7 @@ def select_top_moments(
 
     selected: List[SelectedMoment] = []
     selected_segments: List[Segment] = []
+    picked_per_bucket: dict[int, int] = {}
 
     for cand in candidates:
         if len(selected) >= max_moments:
@@ -103,6 +106,12 @@ def select_top_moments(
 
         seg = cand.segment
         mid = _segment_midpoint(seg)
+        # Diversity guard: limit picks per coarse time bucket (quick win).
+        # Diversity guard: limit picks per coarse time bucket (quick win).
+        if bucket_sec > 0 and max_per_bucket > 0:
+            bucket_id = int(mid // bucket_sec)
+            if picked_per_bucket.get(bucket_id, 0) >= max_per_bucket:
+                continue
 
         # Non-max suppression: reject if too similar to already selected segments.
         reject = False
@@ -122,6 +131,11 @@ def select_top_moments(
             continue
 
         selected_segments.append(seg)
+
+        if bucket_sec > 0 and max_per_bucket > 0:
+            bucket_id = int(mid // bucket_sec)
+            picked_per_bucket[bucket_id] = picked_per_bucket.get(bucket_id, 0) + 1
+
         selected.append(
             SelectedMoment(
                 start_sec=seg.start_sec,
