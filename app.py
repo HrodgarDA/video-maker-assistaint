@@ -121,26 +121,51 @@ with st.sidebar:
 
     if preset == "Drone":
         default_quality, default_composition, default_action = 0.70, 0.70, 0.15
+        default_people, default_scenic, default_camera = 0.10, 0.30, 0.25
     elif preset == "Action":
         default_quality, default_composition, default_action = 0.60, 0.20, 0.75
+        default_people, default_scenic, default_camera = 0.25, 0.05, 0.15
     else:
         default_quality, default_composition, default_action = 0.50, 0.50, 0.50
+        default_people, default_scenic, default_camera = 0.15, 0.15, 0.15
 
     quality_weight = st.slider("Quality", 0.0, 1.0, default_quality, 0.05)
     composition_weight = st.slider("Composition", 0.0, 1.0, default_composition, 0.05)
     action_weight = st.slider("Action", 0.0, 1.0, default_action, 0.05)
 
-    w_sum = quality_weight + composition_weight + action_weight
+    with st.expander("Extra signals (people / scenic / camera)", expanded=False):
+        people_weight = st.slider("People/Group", 0.0, 1.0, default_people, 0.05)
+        scenic_weight = st.slider("Scenic/Sunset", 0.0, 1.0, default_scenic, 0.05)
+        camera_motion_weight = st.slider("Smooth camera", 0.0, 1.0, default_camera, 0.05)
+
+    w_sum = (
+        quality_weight
+        + composition_weight
+        + action_weight
+        + people_weight
+        + scenic_weight
+        + camera_motion_weight
+    )
     if w_sum <= 1e-9:
         quality_weight, composition_weight, action_weight = 0.4, 0.2, 0.4
+        people_weight, scenic_weight, camera_motion_weight = 0.0, 0.0, 0.0
         w_sum = 1.0
 
     quality_weight /= w_sum
     composition_weight /= w_sum
     action_weight /= w_sum
+    people_weight /= w_sum
+    scenic_weight /= w_sum
+    camera_motion_weight /= w_sum
 
     st.caption(
-        f"Normalized → Q={quality_weight:.2f} | C={composition_weight:.2f} | A={action_weight:.2f}"
+        "Normalized → "
+        f"Q={quality_weight:.2f} | "
+        f"C={composition_weight:.2f} | "
+        f"A={action_weight:.2f} | "
+        f"P={people_weight:.2f} | "
+        f"S={scenic_weight:.2f} | "
+        f"Cam={camera_motion_weight:.2f}"
     )
 
     st.divider()
@@ -204,6 +229,9 @@ if run_btn:
         quality_weight=quality_weight,
         composition_weight=composition_weight,
         action_weight=action_weight,
+        people_weight=people_weight,
+        scenic_weight=scenic_weight,
+        camera_motion_weight=camera_motion_weight,
         iou_threshold=iou_threshold,
         min_gap_sec=min_gap_sec,
         min_score=min_score,

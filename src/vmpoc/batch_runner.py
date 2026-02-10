@@ -46,6 +46,9 @@ class PocSettings:
     quality_weight: float = 0.40
     composition_weight: float = 0.20
     action_weight: float = 0.40
+    people_weight: float = 0.15
+    scenic_weight: float = 0.15
+    camera_motion_weight: float = 0.10
 
 
 def _is_video_file(path: Path) -> bool:
@@ -152,7 +155,10 @@ def run_batch_analysis(
             motion_weight=settings.action_weight,
             sharpness_weight=settings.quality_weight,
             composition_weight=settings.composition_weight,
-            )
+            people_weight=settings.people_weight,
+            scenic_weight=settings.scenic_weight,
+            camera_motion_weight=settings.camera_motion_weight,
+        )
 
         # --- Moment selection (deduplicate overlapping windows) ---
         selected = select_top_moments(
@@ -173,7 +179,7 @@ def run_batch_analysis(
             progress_callback(idx - 1, total, f"[{idx}/{total}] Extracting thumbnails: {video_path.name}")
 
         thumbs_dir = run_paths.thumbs_dir(video_stem)
-        thumb_paths = write_moment_thumbnails(video_path, selected, thumbs_dir)
+        thumb_info = write_moment_thumbnails(video_path, selected, thumbs_dir)
 
         # --- Descriptions (POC fallback) ---
         matched = _match_selected_moments_to_features(all_features, selected)
@@ -181,6 +187,7 @@ def run_batch_analysis(
         moments_out: List[MomentResult] = []
         for m_i, m in enumerate(selected):
             sf = matched[m_i] if m_i < len(matched) else None
+            thumb_path, thumb_ts = thumb_info[m_i]
             desc_inputs = DescriptionInputs(
                 motion_raw=sf.motion_raw if sf else 0.0,
                 sharpness_raw=sf.sharpness_raw if sf else 0.0,
@@ -192,8 +199,8 @@ def run_batch_analysis(
                 MomentResult(
                     start_sec=m.start_sec,
                     end_sec=m.end_sec,
-                    thumb_timestamp_sec=m.thumb_timestamp_sec,
-                    thumbnail_path=thumb_paths[m_i],
+                    thumb_timestamp_sec=thumb_ts,
+                    thumbnail_path=thumb_path,
                     interest_score=m.interest_score,
                     description=description,
                 )

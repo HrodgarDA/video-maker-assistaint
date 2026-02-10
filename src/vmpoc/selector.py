@@ -14,7 +14,7 @@ class SelectedMoment:
 
     Notes:
     - thumb_timestamp_sec is where we will extract the thumbnail from the master video.
-    - In the POC we use the segment midpoint. Later we can pick a better frame.
+    - We provide a fast initial guess; the thumbnail step can refine it.
     """
     start_sec: float
     end_sec: float
